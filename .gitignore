@@ -1,0 +1,6 @@
+example
+.idea
+.php_cs.cache
+composer.lock
+nbproject
+vendor
