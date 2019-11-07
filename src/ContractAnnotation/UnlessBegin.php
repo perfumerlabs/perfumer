@@ -31,7 +31,7 @@ class UnlessBegin extends Code
     {
         parent::onBuild();
 
-        $code = 'if (!' . $this->name . ') {';
+        $code = 'if (!$' . $this->name . ') {';
 
         $this->_code = $code;
     }
