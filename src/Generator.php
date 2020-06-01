@@ -728,6 +728,7 @@ final class Generator implements GeneratorInterface
                 $data_providers = [];
                 $test_methods = [];
                 $assertions = [];
+                $instantiations = [];
 
                 foreach ($reflection_class->getMethods() as $reflection_method) {
                     $test_annotation = $this->collectMethodAnnotation($reflection_class, $reflection_method, Test::class);
@@ -780,12 +781,19 @@ final class Generator implements GeneratorInterface
                             return '$' . $value->getName();
                         }, $reflection_method->getParameters());
 
-                        $body = '$_class_instance = new \\' . ltrim($context, '\\') . '();' . PHP_EOL . PHP_EOL;
+                        $body = '$_class_instance = $this->getClassInstance();' . PHP_EOL . PHP_EOL;
                         $body .= '$this->assertTest' . ucfirst($reflection_method->name) . '($expected, $_class_instance->' . $reflection_method->name . '(' . implode(', ', $arguments) . '));';
 
                         $test->setBody($body);
 
                         $test_methods[] = $test;
+
+                        $instantiation = new MethodGenerator();
+                        $instantiation->setVisibility('protected');
+                        $instantiation->setName('getClassInstance');
+                        $instantiation->setBody('return new \\' . ltrim($context, '\\') . '();');
+
+                        $instantiations[] = $instantiation;
 
                         $assertion = new MethodGenerator();
                         $assertion->setVisibility('protected');
@@ -816,8 +824,16 @@ final class Generator implements GeneratorInterface
                     $class_generator->addMethodFromGenerator($test_method);
                 }
 
+                foreach ($instantiations as $instantiation) {
+                    if (!$class_generator->hasMethod($instantiation->getName())) {
+                        $class_generator->addMethodFromGenerator($instantiation);
+                    }
+                }
+
                 foreach ($assertions as $assertion) {
-                    $class_generator->addMethodFromGenerator($assertion);
+                    if (!$class_generator->hasMethod($assertion->getName())) {
+                        $class_generator->addMethodFromGenerator($assertion);
+                    }
                 }
 
                 if ($tests) {
