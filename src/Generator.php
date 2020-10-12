@@ -190,7 +190,7 @@ final class Generator implements GeneratorInterface
     public function addContract(string $class, bool $has_default_context = false)
     {
         $this->contracts[] = [
-            'class' => $class,
+            'class' => '\\' . ltrim($class, '\\'),
             'has_default_context' => $has_default_context
         ];
 
@@ -246,10 +246,34 @@ final class Generator implements GeneratorInterface
 
     public function generateAll()
     {
-        $this->generateContexts($this->contexts);
+        $contract_classes = array_column($this->contracts, 'class');
+
+        foreach ($this->contexts as $context) {
+            if (
+                !in_array($context, $contract_classes) &&
+                !in_array(str_replace('Context', '', $context), $contract_classes)
+            ) {
+                $this->generateContexts([$context]);
+            }
+        }
+
         $this->generateCollections($this->collections);
 
         $this->collectModuleAnnotations();
+
+        foreach ($this->contracts as $contract) {
+            $class = $contract['class'];
+            $reflection_class = new \ReflectionClass($class);
+            if ($contract['has_default_context']) {
+                $this->generateContexts([$class . 'Context']);
+            }
+        }
+
+        foreach ($this->contexts as $context) {
+            if (in_array($context, $contract_classes)) {
+                $this->generateContexts([$context]);
+            }
+        }
 
         $bundle = new Bundle();
 
@@ -258,10 +282,6 @@ final class Generator implements GeneratorInterface
 
             try {
                 $reflection_class = new \ReflectionClass($class);
-
-                if ($contract['has_default_context']) {
-                    $this->generateContexts([$class . 'Context']);
-                }
 
                 $implement_all_methods = true;
 
@@ -305,9 +325,9 @@ final class Generator implements GeneratorInterface
                 $base_class_generator->setName($reflection_class->getShortName());
 
                 if ($reflection_class->isInterface()) {
-                    $base_class_generator->setImplementedInterfaces(array_merge($base_class_generator->getImplementedInterfaces(), ['\\' . $class]));
+                    $base_class_generator->setImplementedInterfaces(array_merge($base_class_generator->getImplementedInterfaces(), [$class]));
                 } else {
-                    $base_class_generator->setExtendedClass('\\' . $class);
+                    $base_class_generator->setExtendedClass($class);
                 }
 
                 /** @var ContractClassAnnotation[] $class_annotations */
@@ -369,7 +389,7 @@ final class Generator implements GeneratorInterface
                             $type = (string) $reflection_method->getReturnType();
 
                             if ($type && !$reflection_method->getReturnType()->isBuiltin()) {
-                                $type = '\\' . $type;
+                                $type = '\\' . ltrim($type, '\\');
                             }
 
                             $method_generator->setReturnType($type);
@@ -483,7 +503,7 @@ final class Generator implements GeneratorInterface
 
                             $base_class_generator->addMethodFromGenerator($method_generator);
                         }
-                    } catch (PerfumerException $exception) {
+                    } catch (\Throwable $exception) {
                         $message = sprintf('ERROR. %s->%s: %s' . PHP_EOL, $class, $reflection_method->getName(), $exception->getMessage());
 
                         exit($message);
@@ -494,7 +514,7 @@ final class Generator implements GeneratorInterface
                 $bundle->addClassData($class_data);
                 $bundle->addBaseTestData($base_test_data);
                 $bundle->addTestData($test_data);
-            } catch (PerfumerException $exception) {
+            } catch (\Throwable $exception) {
                 $message = sprintf('ERROR. %s: %s' . PHP_EOL, $class, $exception->getMessage());
 
                 exit($message);
