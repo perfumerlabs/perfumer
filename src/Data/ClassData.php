@@ -2,7 +2,7 @@
 
 namespace Perfumerlabs\Perfumer\Data;
 
-use Zend\Code\Generator\ClassGenerator;
+use Laminas\Code\Generator\ClassGenerator;
 
 class ClassData extends AbstractData
 {
