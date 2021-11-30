@@ -7,7 +7,7 @@ use Perfumerlabs\Perfumer\ContractAnnotation\Code;
 use Perfumerlabs\Perfumer\ContractMethodAnnotation;
 use Perfumerlabs\Perfumer\LocalVariable;
 use Perfumerlabs\Perfumer\PerfumerException;
-use Zend\Code\Generator\MethodGenerator;
+use Laminas\Code\Generator\MethodGenerator;
 
 final class MethodData
 {
