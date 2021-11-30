@@ -190,7 +190,7 @@ final class Generator implements GeneratorInterface
     public function addContract(string $class, bool $has_default_context = false)
     {
         $this->contracts[] = [
-            'class' => '\\' . ltrim($class, '\\'),
+            'class' => $class,
             'has_default_context' => $has_default_context
         ];
 
@@ -246,34 +246,11 @@ final class Generator implements GeneratorInterface
 
     public function generateAll()
     {
-        $contract_classes = array_column($this->contracts, 'class');
-
-        foreach ($this->contexts as $context) {
-            if (
-                !in_array($context, $contract_classes) &&
-                !in_array(str_replace('Context', '', $context), $contract_classes)
-            ) {
-                $this->generateContexts([$context]);
-            }
-        }
+        $this->generateContexts($this->contexts);
 
         $this->generateCollections($this->collections);
 
         $this->collectModuleAnnotations();
-
-        foreach ($this->contracts as $contract) {
-            $class = $contract['class'];
-            $reflection_class = new \ReflectionClass($class);
-            if ($contract['has_default_context']) {
-                $this->generateContexts([$class . 'Context']);
-            }
-        }
-
-        foreach ($this->contexts as $context) {
-            if (in_array($context, $contract_classes)) {
-                $this->generateContexts([$context]);
-            }
-        }
 
         $bundle = new Bundle();
 
@@ -282,6 +259,10 @@ final class Generator implements GeneratorInterface
 
             try {
                 $reflection_class = new \ReflectionClass($class);
+
+                if ($contract['has_default_context']) {
+                    $this->generateContexts([$class . 'Context']);
+                }
 
                 $implement_all_methods = true;
 
@@ -325,9 +306,9 @@ final class Generator implements GeneratorInterface
                 $base_class_generator->setName($reflection_class->getShortName());
 
                 if ($reflection_class->isInterface()) {
-                    $base_class_generator->setImplementedInterfaces(array_merge($base_class_generator->getImplementedInterfaces(), [$class]));
+                    $base_class_generator->setImplementedInterfaces(array_merge($base_class_generator->getImplementedInterfaces(), ['\\' . $class]));
                 } else {
-                    $base_class_generator->setExtendedClass($class);
+                    $base_class_generator->setExtendedClass('\\' . $class);
                 }
 
                 /** @var ContractClassAnnotation[] $class_annotations */
@@ -389,7 +370,7 @@ final class Generator implements GeneratorInterface
                             $type = (string) $reflection_method->getReturnType();
 
                             if ($type && !$reflection_method->getReturnType()->isBuiltin()) {
-                                $type = '\\' . ltrim($type, '\\');
+                                $type = '\\' . $type;
                             }
 
                             $method_generator->setReturnType($type);
