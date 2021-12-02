@@ -140,7 +140,6 @@ final class BaseClassData extends ClassData
 
             $getter = new MethodGenerator();
             $getter->setDocBlock($doc_block);
-            $getter->setFinal(true);
             $getter->setVisibility('private');
             $getter->setName('get_' . $name);
             $getter->setReturnType($class);

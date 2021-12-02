@@ -370,7 +370,11 @@ final class Generator implements GeneratorInterface
                             $type = (string) $reflection_method->getReturnType();
 
                             if ($type && !$reflection_method->getReturnType()->isBuiltin()) {
-                                $type = '\\' . $type;
+                                if ($reflection_method->getReturnType()->allowsNull()) {
+                                    $type = str_replace('?', '?\\', $type);
+                                } else {
+                                    $type = '\\' . $type;
+                                }
                             }
 
                             $method_generator->setReturnType($type);
