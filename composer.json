@@ -18,11 +18,13 @@
     "doctrine/annotations": "~1",
     "friendsofphp/php-cs-fixer": "~3",
     "laminas/laminas-code": "~4",
-    "symfony/class-loader": "^3.4"
+    "symfony/class-loader": "^3.4",
+    "symfony/options-resolver": "5.*"
   },
   "autoload": {
     "psr-4": {
-      "Perfumerlabs\\Perfumer\\": "src/"
+      "Perfumerlabs\\Perfumer\\": "src/",
+      "Perfumer\\Generator\\": "lib/"
     }
   },
   "config": {
