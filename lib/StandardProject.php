@@ -319,43 +319,9 @@ class StandardProject extends Project
                             $method_data->addLocalVariable($local_variable);
                         }
 
-                        $method_annotations = [];
+                        $contractMethod = new ContractMethod();
 
-                        foreach ($class_annotations as $class_annotation) {
-                            if ($class_annotation instanceof Before) {
-                                foreach ($class_annotation->steps as $reader_annotation) {
-                                    if ($reader_annotation instanceof ContractMethodAnnotation) {
-                                        $method_annotations[] = $reader_annotation;
-                                    }
-                                }
-                            }
-                        }
-
-                        $reader_annotations = $this->getAnnotationReader()->getMethodAnnotations($reflection_method);
-
-                        foreach ($reader_annotations as $reader_annotation) {
-                            if ($reader_annotation instanceof Collection) {
-                                $collection_annotations = $this->collectMethodAnnotations($reader_annotation->class, $reader_annotation->method);
-
-                                foreach ($collection_annotations as $collection_annotation) {
-                                    $method_annotations[] = $collection_annotation;
-                                }
-                            } elseif ($reader_annotation instanceof ContractMethodAnnotation) {
-                                $method_annotations[] = $reader_annotation;
-                            }
-                        }
-
-                        for ($i = count($class_annotations) - 1; $i >= 0; $i--) {
-                            $class_annotation = $class_annotations[$i];
-
-                            if ($class_annotation instanceof After) {
-                                foreach ($class_annotation->steps as $reader_annotation) {
-                                    if ($reader_annotation instanceof ContractMethodAnnotation) {
-                                        $method_annotations[] = $reader_annotation;
-                                    }
-                                }
-                            }
-                        }
+                        $method_annotations = $contractMethod->collectAnnotations($reflection_class, $reflection_method, $this->getModules());
 
                         $set_annotations = [];
                         $step_annotations = [];
