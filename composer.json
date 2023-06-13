@@ -14,8 +14,8 @@
   ],
   "require": {
     "php": ">=7.4.0",
-    "phpunit/phpunit": "~9",
-    "doctrine/annotations": "~1",
+    "phpunit/phpunit": "~9|~10",
+    "doctrine/annotations": "~1|~2",
     "friendsofphp/php-cs-fixer": "~3",
     "laminas/laminas-code": "~4",
     "symfony/class-loader": "^3.4"
