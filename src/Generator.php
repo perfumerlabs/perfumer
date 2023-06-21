@@ -107,6 +107,8 @@ final class Generator implements GeneratorInterface
      */
     private $reader;
 
+    private $options;
+
     public function __construct(string $root_dir, array $options = [])
     {
         $this->reader = new AnnotationReader();
@@ -115,6 +117,8 @@ final class Generator implements GeneratorInterface
         AnnotationRegistry::registerLoader('class_exists');
 
         $this->root_dir = $root_dir;
+        $this->options = $options;
+        $this->options['root_dir'] = $root_dir;
 
         if (isset($options['contract_prefix'])) {
             $this->contract_prefix = (string) $options['contract_prefix'];
@@ -338,6 +342,8 @@ final class Generator implements GeneratorInterface
                     $annotation->setBaseTestData($base_test_data);
                     $annotation->setClassData($class_data);
                     $annotation->setTestData($test_data);
+                    $annotation->setTestData($test_data);
+                    $annotation->setOptions($this->options);
 
                     $annotation->onCreate();
                 }
@@ -547,6 +553,7 @@ final class Generator implements GeneratorInterface
         $annotation->setClassData($class_data);
         $annotation->setTestData($test_data);
         $annotation->setMethodData($method_data);
+        $annotation->setOptions($this->options);
         $annotation->onCreate();
 
         $add_annotations = [];
@@ -568,6 +575,7 @@ final class Generator implements GeneratorInterface
                     $context_annotation->setClassData($class_data);
                     $context_annotation->setTestData($test_data);
                     $context_annotation->setMethodData($method_data);
+                    $context_annotation->setOptions($this->options);
                     $context_annotation->onCreate();
 
                     $add_annotations[] = $context_annotation;

@@ -39,6 +39,8 @@ abstract class ContractAnnotation extends Annotation
      */
     private $_test_data;
 
+    private $_options = [];
+
     public function onCreate(): void
     {
     }
@@ -109,5 +111,15 @@ abstract class ContractAnnotation extends Annotation
     public function setReflectionMethod(\ReflectionMethod $reflection_method): void
     {
         $this->_reflection_method = $reflection_method;
+    }
+
+    public function getOptions(): array
+    {
+        return $this->_options;
+    }
+
+    public function setOptions(array $_options): void
+    {
+        $this->_options = $_options;
     }
 }
