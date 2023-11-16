@@ -373,17 +373,30 @@ final class Generator implements GeneratorInterface
                         $method_generator->setVisibility('public');
 
                         if ($reflection_method->getReturnType() !== null) {
-                            $type = (string) $reflection_method->getReturnType();
+                            $returnTypes = [];
 
-                            if ($type && !$reflection_method->getReturnType()->isBuiltin()) {
-                                if ($reflection_method->getReturnType()->allowsNull()) {
-                                    $type = str_replace('?', '?\\', $type);
-                                } else {
-                                    $type = '\\' . $type;
-                                }
+                            if ($reflection_method->getReturnType() instanceof \ReflectionUnionType) {
+                                $reflectionNamedTypes = $reflection_method->getReturnType()->getTypes();
+                            } else {
+                                $reflectionNamedTypes = [$reflection_method->getReturnType()];
                             }
 
-                            $method_generator->setReturnType($type);
+                            /** @var \ReflectionNamedType $reflectionNamedType */
+                            foreach ($reflectionNamedTypes as $reflectionNamedType) {
+                                $returnType = (string) $reflectionNamedType;
+
+                                if (!$reflectionNamedType->isBuiltin()) {
+                                    if ($reflectionNamedType->allowsNull()) {
+                                        $returnType = str_replace('?', '?\\', $returnType);
+                                    } else {
+                                        $returnType = '\\' . $returnType;
+                                    }
+                                }
+
+                                $returnTypes[] = $returnType;
+                            }
+
+                            $method_generator->setReturnType(join('|', $returnTypes));
                         }
 
                         foreach ($reflection_method->getParameters() as $reflection_parameter) {
