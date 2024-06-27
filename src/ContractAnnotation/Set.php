@@ -2,28 +2,31 @@
 
 namespace Perfumerlabs\Perfumer\ContractAnnotation;
 
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 use Perfumerlabs\Perfumer\LocalVariable;
+use Perfumerlabs\Perfumer\PerfumerException;
 
 /**
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target({"CLASS", "METHOD", "ANNOTATION"})
  */
+#[\Attribute(
+    \Attribute::TARGET_METHOD |
+    \Attribute::TARGET_CLASS |
+    \Attribute::IS_REPEATABLE
+)]
 class Set extends Code
 {
-    /**
-     * @var string
-     */
-    public $name;
-
-    /**
-     * @var string
-     */
-    public $value;
-
-    /**
-     * @var array
-     */
-    public $tags = [];
+    public function __construct(
+        public $name = null,
+        public $value = null,
+        public $tags = [],
+        ...$args
+    )
+    {
+        parent::__construct(...$args);
+    }
 
     /**
      * @var int
@@ -51,7 +54,12 @@ class Set extends Code
         $variable->view = $this->_local_variable_view;
         $variable->init = false;
 
-        $this->getMethodData()->addLocalVariable($variable, false);
+        try {
+            $this->getMethodData()->addLocalVariable($variable, false);
+        } catch (PerfumerException $exception) {
+            $message = 'In '.static::class.': '.$exception->getMessage();
+            throw new PerfumerException($message);
+        }
     }
 
     public function onBuild(): void

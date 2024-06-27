@@ -243,8 +243,19 @@ final class Generator implements GeneratorInterface
     {
         foreach ($this->modules as &$module) {
             $reflection = new \ReflectionClass($module['class']);
+            $attributes = $reflection->getAttributes();
+            $annotations = [];
 
-            $module['annotations'] = $this->reader->getClassAnnotations($reflection);
+            if ($attributes) {
+                /** @var \ReflectionAttribute[] $attributes */
+                foreach ($attributes as $attribute) {
+                    $annotations[] = $attribute->newInstance();
+                }
+            }
+
+            $annotations = array_merge($annotations, $this->reader->getClassAnnotations($reflection));
+
+            $module['annotations'] = $annotations;
         }
     }
 
@@ -328,7 +339,17 @@ final class Generator implements GeneratorInterface
                     }
                 }
 
-                $reader_annotations = $this->reader->getClassAnnotations($reflection_class);
+                $attributes = $reflection_class->getAttributes();
+                $reader_annotations = [];
+
+                if ($attributes) {
+                    /** @var \ReflectionAttribute[] $attributes */
+                    foreach ($attributes as $attribute) {
+                        $reader_annotations[] = $attribute->newInstance();
+                    }
+                }
+
+                $reader_annotations = array_merge($reader_annotations, $this->reader->getClassAnnotations($reflection_class));
 
                 foreach ($reader_annotations as $reader_annotation) {
                     if ($reader_annotation instanceof ContractClassAnnotation) {
@@ -433,7 +454,17 @@ final class Generator implements GeneratorInterface
                             }
                         }
 
-                        $reader_annotations = $this->reader->getMethodAnnotations($reflection_method);
+                        $attributes = $reflection_method->getAttributes();
+                        $reader_annotations = [];
+
+                        if ($attributes) {
+                            /** @var \ReflectionAttribute[] $attributes */
+                            foreach ($attributes as $attribute) {
+                                $reader_annotations[] = $attribute->newInstance();
+                            }
+                        }
+
+                        $reader_annotations = array_merge($reader_annotations, $this->reader->getMethodAnnotations($reflection_method));
 
                         foreach ($reader_annotations as $reader_annotation) {
                             if ($reader_annotation instanceof Collection) {
@@ -510,7 +541,7 @@ final class Generator implements GeneratorInterface
                     } catch (\Throwable $exception) {
                         $message = sprintf('ERROR. %s->%s: %s' . PHP_EOL, $class, $reflection_method->getName(), $exception->getMessage());
 
-                        exit($message);
+                        throw new \Exception($message, 0, $exception);
                     }
                 }
 
@@ -521,7 +552,7 @@ final class Generator implements GeneratorInterface
             } catch (\Throwable $exception) {
                 $message = sprintf('ERROR. %s: %s' . PHP_EOL, $class, $exception->getMessage());
 
-                exit($message);
+                throw new \Exception($message, 0, $exception);
             }
         }
 
@@ -605,7 +636,14 @@ final class Generator implements GeneratorInterface
             $class = new \ReflectionClass($class);
         }
 
-        $annotation = $this->reader->getClassAnnotation($class, $annotation_name);
+        $attributes = $class->getAttributes($annotation_name);
+
+        if ($attributes) {
+            /** @var \ReflectionAttribute[] $attributes */
+            $annotation = $attributes[0]->newInstance();
+        } else {
+            $annotation = $this->reader->getClassAnnotation($class, $annotation_name);
+        }
 
         if ($annotation instanceof ContextAnnotation) {
             $annotation->onCreate();
@@ -622,7 +660,17 @@ final class Generator implements GeneratorInterface
             $class = new \ReflectionClass($class);
         }
 
-        $class_annotations = $this->reader->getClassAnnotations($class);
+        $attributes = $class->getAttributes();
+        $class_annotations = [];
+
+        if ($attributes) {
+            /** @var \ReflectionAttribute[] $attributes */
+            foreach ($attributes as $attribute) {
+                $class_annotations[] = $attribute->newInstance();
+            }
+        }
+
+        $class_annotations = array_merge($class_annotations, $this->reader->getClassAnnotations($class));
 
         foreach ($class_annotations as $class_annotation) {
             if ($class_annotation instanceof Annotation) {
@@ -666,7 +714,17 @@ final class Generator implements GeneratorInterface
             }
         }
 
-        $method_annotations = $this->reader->getMethodAnnotations($method);
+        $attributes = $method->getAttributes();
+        $method_annotations = [];
+
+        if ($attributes) {
+            /** @var \ReflectionAttribute[] $attributes */
+            foreach ($attributes as $attribute) {
+                $method_annotations[] = $attribute->newInstance();
+            }
+        }
+
+        $method_annotations = array_merge($method_annotations, $this->reader->getMethodAnnotations($method));
 
         foreach ($method_annotations as $method_annotation) {
             if ($method_annotation instanceof Annotation) {
@@ -708,7 +766,14 @@ final class Generator implements GeneratorInterface
             }
         }
 
-        $annotation = $this->reader->getMethodAnnotation($method, $annotation_name);
+        $attributes = $method->getAttributes($annotation_name);
+
+        if ($attributes) {
+            /** @var \ReflectionAttribute[] $attributes */
+            $annotation = $attributes[0]->newInstance();
+        } else {
+            $annotation = $this->reader->getMethodAnnotation($method, $annotation_name);
+        }
 
         if ($annotation instanceof ContextAnnotation) {
             $annotation->onCreate();
@@ -1046,6 +1111,9 @@ final class Generator implements GeneratorInterface
                 [
                     'name' => 'Annotation',
                 ],
+//                [
+//                    'name' => 'NamedArgumentConstructor',
+//                ],
                 [
                     'name' => 'Target({"CLASS", "METHOD", "ANNOTATION"})'
                 ]
@@ -1056,6 +1124,7 @@ final class Generator implements GeneratorInterface
         $class_generator->setDocBlock($doc_block);
         $class_generator->setNamespaceName('Generated\\Annotation\\' . $reflection_class->getName());
         $class_generator->setName($class_name);
+        $class_generator->addUse('Doctrine\\Common\\Annotations\\Annotation\\NamedArgumentConstructor');
 
         $returns_annotation = $this->collectMethodAnnotation($reflection_class, $reflection_method, Returns::class);
 
@@ -1065,7 +1134,63 @@ final class Generator implements GeneratorInterface
 
         $class_generator->setExtendedClass($extends);
 
-        foreach ($reflection_method->getParameters() as $reflection_parameter) {
+        $constructor = new MethodGenerator();
+        $constructor->setName('__construct');
+        $class_generator->addMethodFromGenerator($constructor);
+        $constructorBody = '';
+        $firstArg = null;
+
+        foreach ($reflection_method->getParameters() as $index => $reflection_parameter) {
+            if (!$firstArg) {
+                $firstArg = 'in_'.$reflection_parameter->getName();
+                $constructorBody .= PHP_EOL.sprintf('$_params = is_array($%s) ? $%s : null;',
+                        $firstArg,
+                        $firstArg,
+                    );
+            }
+
+            $parameter = new ParameterGenerator();
+            $parameter->setName('in_' . $reflection_parameter->getName());
+            $parameter->setDefaultValue(null);
+            $constructor->setParameter($parameter);
+            $constructorBody .= PHP_EOL.sprintf('if (is_array($_params)) {',
+                );
+            $constructorBody .= PHP_EOL.sprintf('$this->in_%s = $_params[\'in_%s\'] ?? null;',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName(),
+                );
+            $constructorBody .= PHP_EOL.sprintf('if (isset($_params[\'in_%s\'])) unset($_params[\'in_%s\']);',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName(),
+                );
+            $constructorBody .= PHP_EOL.sprintf('} else {', $firstArg);
+            $constructorBody .= PHP_EOL.sprintf('$this->in_%s = $in_%s;',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName()
+                );
+            $constructorBody .= PHP_EOL.'}';
+
+            $parameter = new ParameterGenerator();
+            $parameter->setName($reflection_parameter->getName());
+            $parameter->setDefaultValue(null);
+            $constructor->setParameter($parameter);
+            $constructorBody .= PHP_EOL.sprintf('if (is_array($_params)) {',
+                );
+            $constructorBody .= PHP_EOL.sprintf('$this->%s = $_params[\'%s\'] ?? null;',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName(),
+                );
+            $constructorBody .= PHP_EOL.sprintf('if (isset($_params[\'%s\'])) unset($_params[\'%s\']);',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName(),
+                );
+            $constructorBody .= PHP_EOL.sprintf('} else {', $firstArg);
+            $constructorBody .= PHP_EOL.sprintf('$this->%s = $%s;',
+                    $reflection_parameter->getName(),
+                    $reflection_parameter->getName()
+                );
+            $constructorBody .= PHP_EOL.'}';
+
             $doc_block = DocBlockGenerator::fromArray([
                 'tags' => [
                     [
@@ -1079,7 +1204,6 @@ final class Generator implements GeneratorInterface
             $property->setDocBlock($doc_block);
             $property->setVisibility('public');
             $property->setName('in_' . $reflection_parameter->getName());
-
             $class_generator->addPropertyFromGenerator($property);
 
             $doc_block = DocBlockGenerator::fromArray([
@@ -1110,6 +1234,35 @@ final class Generator implements GeneratorInterface
             ]);
 
             foreach ($returns_annotation->names as $name) {
+                if (!$firstArg) {
+                    $firstArg = 'out_' . $name;
+                    $constructorBody .= PHP_EOL.sprintf('$_params = is_array($%s) ? $%s : null;',
+                            $firstArg,
+                            $firstArg,
+                        );
+                }
+
+                $parameter = new ParameterGenerator();
+                $parameter->setName('out_' . $name);
+                $parameter->setDefaultValue(null);
+                $constructor->setParameter($parameter);
+                $constructorBody .= PHP_EOL.sprintf('if (is_array($_params)) {',
+                    );
+                $constructorBody .= PHP_EOL.sprintf('$this->out_%s = $_params[\'out_%s\'] ?? null;',
+                        $name,
+                        $name,
+                    );
+                $constructorBody .= PHP_EOL.sprintf('if (isset($_params[\'out_%s\'])) unset($_params[\'out_%s\']);',
+                        $name,
+                        $name,
+                    );
+                $constructorBody .= PHP_EOL.sprintf('} else {', $firstArg);
+                $constructorBody .= PHP_EOL.sprintf('$this->out_%s = $out_%s;',
+                        $name,
+                        $name,
+                    );
+                $constructorBody .= PHP_EOL.'}';
+
                 $property = new PropertyGenerator();
                 $property->setDocBlock($doc_block);
                 $property->setVisibility('public');
@@ -1118,6 +1271,28 @@ final class Generator implements GeneratorInterface
                 $class_generator->addPropertyFromGenerator($property);
             }
         } else {
+            if (!$firstArg) {
+                $firstArg = 'out';
+                $constructorBody .= PHP_EOL.sprintf('$_params = is_array($%s) ? $%s : null;',
+                        $firstArg,
+                        $firstArg,
+                    );
+            }
+
+            $parameter = new ParameterGenerator();
+            $parameter->setName('out');
+            $parameter->setDefaultValue(null);
+            $constructor->setParameter($parameter);
+            $constructorBody .= PHP_EOL.sprintf('if (is_array($_params)) {',
+                );
+            $constructorBody .= PHP_EOL.sprintf('$this->out = $_params[\'out\'] ?? null;',
+                );
+            $constructorBody .= PHP_EOL.sprintf('if (isset($_params[\'out\'])) unset($_params[\'out\']);',
+                );
+            $constructorBody .= PHP_EOL.sprintf('} else {', $firstArg);
+            $constructorBody .= PHP_EOL.'$this->out = $out;';
+            $constructorBody .= PHP_EOL.'}';
+
             $doc_block = DocBlockGenerator::fromArray([
                 'tags' => [
                     [
@@ -1134,6 +1309,15 @@ final class Generator implements GeneratorInterface
 
             $class_generator->addPropertyFromGenerator($property);
         }
+
+        $parameter = new ParameterGenerator();
+        $parameter->setName('args');
+        $parameter->setVariadic(true);
+        $constructor->setParameter($parameter);
+        $constructorBody .= PHP_EOL.sprintf('$args = is_array($_params) ? $_params : $args;',
+            );
+        $constructorBody .= PHP_EOL.'parent::__construct(...$args);';
+        $constructor->setBody($constructorBody);
 
         // onCreate()
         $method_generator = new MethodGenerator();
@@ -1214,7 +1398,13 @@ final class Generator implements GeneratorInterface
 
         $class_generator->addMethodFromGenerator($method_generator);
 
-        $code = '<?php' . PHP_EOL . PHP_EOL . $class_generator->generate();
+        $class_code = $class_generator->generate();
+
+        $annotation_block = ' * @Target({"CLASS", "METHOD", "ANNOTATION"})'.PHP_EOL.' */';
+        $attribute_block = '#[\Attribute('.PHP_EOL.'    \Attribute::TARGET_METHOD |'.PHP_EOL.'    \Attribute::TARGET_CLASS |'.PHP_EOL.'    \Attribute::IS_REPEATABLE'.PHP_EOL.')]';
+        $class_code = str_replace($annotation_block, $annotation_block.PHP_EOL.$attribute_block, $class_code);
+
+        $code = '<?php' . PHP_EOL . PHP_EOL . $class_code;
 
         file_put_contents($output_name, $code);
     }

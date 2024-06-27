@@ -2,48 +2,32 @@
 
 namespace Perfumerlabs\Perfumer\ContractAnnotation;
 
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 use Perfumerlabs\Perfumer\ContractMethodAnnotation;
 
 /**
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target({"CLASS", "METHOD", "ANNOTATION"})
  */
+#[\Attribute(
+    \Attribute::TARGET_METHOD |
+    \Attribute::TARGET_CLASS |
+    \Attribute::IS_REPEATABLE
+)]
 class Code extends ContractMethodAnnotation
 {
-    /**
-     * @var string
-     */
-    public $_code;
-
-    /**
-     * @var string
-     */
-    public $_before_code;
-
-    /**
-     * @var string
-     */
-    public $_after_code;
-
-    /**
-     * @var string
-     */
-    public $if;
-
-    /**
-     * @var string
-     */
-    public $unless;
-
-    /**
-     * @var bool
-     */
-    public $valid = true;
-
-    /**
-     * @var bool
-     */
-    public $_is_validatable = true;
+    public function __construct(
+        public $_code = null,
+        public $_before_code = null,
+        public $_after_code = null,
+        public $if = null,
+        public $unless = null,
+        public $valid = true,
+        public $_is_validatable = true,
+    )
+    {
+    }
 
     public function onAnalyze(): void
     {

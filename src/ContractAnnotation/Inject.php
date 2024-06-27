@@ -2,24 +2,27 @@
 
 namespace Perfumerlabs\Perfumer\ContractAnnotation;
 
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 use Doctrine\Common\Annotations\Annotation\Target;
 use Perfumerlabs\Perfumer\ContractClassAnnotation;
 
 /**
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target("CLASS")
  */
+#[\Attribute(
+    \Attribute::TARGET_CLASS |
+    \Attribute::IS_REPEATABLE
+)]
 class Inject extends ContractClassAnnotation
 {
-    /**
-     * @var string
-     */
-    public $name;
-
-    /**
-     * @var string
-     */
-    public $type;
+    public function __construct(
+        public $name = null,
+        public $type = null,
+    )
+    {
+    }
 
     public function onBuild(): void
     {

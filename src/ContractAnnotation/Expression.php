@@ -2,33 +2,31 @@
 
 namespace Perfumerlabs\Perfumer\ContractAnnotation;
 
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 use Perfumerlabs\Perfumer\LocalVariable;
 
 /**
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target({"CLASS", "METHOD", "ANNOTATION"})
  */
+#[\Attribute(
+    \Attribute::TARGET_METHOD |
+    \Attribute::TARGET_CLASS |
+    \Attribute::IS_REPEATABLE
+)]
 class Expression extends Code
 {
-    /**
-     * @var bool
-     */
-    public $redeclare = false;
-
-    /**
-     * @var string
-     */
-    public $_expression;
-
-    /**
-     * @var array
-     */
-    public $_arguments = [];
-
-    /**
-     * @var mixed
-     */
-    public $_return;
+    public function __construct(
+        public $redeclare = false,
+        public $_expression = null,
+        public $_arguments = [],
+        public $_return = null,
+        ...$args
+    )
+    {
+        parent::__construct(...$args);
+    }
 
     public function onCreate(): void
     {

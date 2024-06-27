@@ -2,10 +2,17 @@
 
 namespace Perfumerlabs\Perfumer\ContractAnnotation;
 
+use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 /**
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target({"CLASS", "METHOD", "ANNOTATION"})
  */
+#[\Attribute(
+    \Attribute::TARGET_METHOD |
+    \Attribute::TARGET_CLASS |
+    \Attribute::IS_REPEATABLE
+)]
 class SharedClassCall extends ClassCall
 {
     public function onCreate(): void

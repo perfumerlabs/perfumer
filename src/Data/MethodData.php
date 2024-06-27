@@ -94,6 +94,10 @@ final class MethodData
 
     public function requireLocalVariable($name): LocalVariable
     {
+        if (!is_string($name)) {
+            throw new PerfumerException('$name must be string, but it is '.print_r($name, true));
+        }
+
         if (!$this->hasLocalVariable($name)) {
             throw new PerfumerException('Local variable "' . $name . '" is not added yet. Possibly, you have mistyped variable name or variable is not initialised yet.');
         }
